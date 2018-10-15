@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package benchmark;
+
+message TestStruct2 {
+    uint64 id = 1;
+    string key = 2;
+    string msg = 3;
+    int32 counter = 4;
+    bool flag = 5;
+}

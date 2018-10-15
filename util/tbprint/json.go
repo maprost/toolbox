@@ -1,4 +1,4 @@
-package print
+package mpprint
 
 import (
 	"bytes"
