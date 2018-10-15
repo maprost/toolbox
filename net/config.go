@@ -1,6 +1,10 @@
 package net
 
 type Config struct {
+	// server
+	Host string
+	Port string
+
 	// cookie config
 	CookieRootPath string
 	DefaultCookies []string
@@ -9,24 +13,28 @@ type Config struct {
 	StartDelimiter string
 	EndDelimiter   string
 
-	// router config
+	// handler func
 	FailRedirectPath string
-	InitConnection   func(*Connection) error
-	AuthCheck        func(*Connection) bool
-	AdminCheck       func(*Connection) bool
+	InitConnection   func(*Server, *Connection) error
+	AuthCheck        CheckFunc
+	AdminCheck       CheckFunc
 	Close            func(con *Connection, commit bool) error
 	Finish           func(con *Connection)
 }
 
 func NewConfig() *Config {
 	return &Config{
+		Host:             "localhost",
+		Port:             "8080",
 		CookieRootPath:   "/",
 		DefaultCookies:   []string{},
 		StartDelimiter:   "§§", // works better with html
 		EndDelimiter:     "§§", // works better with html
 		FailRedirectPath: "/",
+		InitConnection:   nil,
 		AuthCheck:        nil,
 		AdminCheck:       nil,
-		InitConnection:   nil,
+		Close:            nil,
+		Finish:           nil,
 	}
 }

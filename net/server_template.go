@@ -9,7 +9,7 @@ import (
 
 // CreateHTMLTemplates collect all html files inside the directory and subdirectories and put them into a template.
 // Also use the relative path as key.
-func (r *Router) CreateTemplatesFromPath(rootPath string) *template.Template {
+func (s *Server) CreateTemplatesFromPath(rootPath string) *template.Template {
 	content := make(map[string]string)
 
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
@@ -28,15 +28,15 @@ func (r *Router) CreateTemplatesFromPath(rootPath string) *template.Template {
 		panic(err)
 	}
 
-	return r.CreateTemplates(content)
+	return s.CreateTemplates(content)
 }
 
 // CreateTemplates
-func (r *Router) CreateTemplates(content map[string]string) *template.Template {
+func (s *Server) CreateTemplates(content map[string]string) *template.Template {
 	mainTmpl := template.New("main")
 
 	for key, text := range content {
-		tmpl, err := loadTemplate(key, text, r.Config)
+		tmpl, err := loadTemplate(key, text, s.cfg)
 		if err != nil {
 			panic(err)
 		}
@@ -46,7 +46,7 @@ func (r *Router) CreateTemplates(content map[string]string) *template.Template {
 		}
 	}
 
-	r.engine.SetHTMLTemplate(mainTmpl)
+	s.engine.SetHTMLTemplate(mainTmpl)
 	return mainTmpl
 }
 

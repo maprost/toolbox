@@ -10,10 +10,10 @@ import (
 	"github.com/maprost/toolbox/net"
 )
 
-func TestNet_QueryParamDate(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
-		from, err := n.QueryParamDate("from", "2006-01-02")
-		n.SendResponse(from.String(), err)
+func Test_QueryParamDate(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
+		from, err := con.QueryParamDate("from", "2006-01-02")
+		con.SendResponse(from.String(), err)
 	})
 	defer server.Close()
 
@@ -24,10 +24,10 @@ func TestNet_QueryParamDate(t *testing.T) {
 	should.BeEqual(t, response.String(), "\"2018-12-24 00:00:00 +0000 UTC\"")
 }
 
-func TestNet_QueryParamDate_wrongFormat(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
-		from, err := n.QueryParamDate("from", "2006-01-02")
-		n.SendResponse(from.String(), err)
+func Test_QueryParamDate_wrongFormat(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
+		from, err := con.QueryParamDate("from", "2006-01-02")
+		con.SendResponse(from.String(), err)
 	})
 	defer server.Close()
 

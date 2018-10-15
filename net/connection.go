@@ -56,6 +56,8 @@ type Connection struct {
 	start        time.Time
 
 	defaultCookieValues map[string]string // cookie -> value
+
+	Context interface{}
 }
 
 // RequestSignature returns the request signature as string

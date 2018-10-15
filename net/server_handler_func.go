@@ -1,10 +1,13 @@
 package net
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // Request without auth check
 func Request(action HandlerFunc) HandlerFunc {
-	return request(noCheck, func(*Connection){}, action)
+	return request(noCheck, func(*Connection) {}, action)
 }
 
 // AuthRequest with auth check and 401 if auth failed
@@ -19,7 +22,7 @@ func AdminRequest(action HandlerFunc) HandlerFunc {
 
 // Website without auth check
 func Website(action HandlerFunc) HandlerFunc {
-	return request(noCheck, func(*Connection){}, action)
+	return request(noCheck, func(*Connection) {}, action)
 }
 
 // Website with auth check and root redirect if auth failed
@@ -34,7 +37,7 @@ func AdminWebsite(action HandlerFunc) HandlerFunc {
 
 // File without auth check, no locale check, and no auth failed function
 func File(action HandlerFunc) HandlerFunc {
-	return request(noCheck, func(*Connection){}, action)
+	return request(noCheck, func(*Connection) {}, action)
 }
 
 func noCheck(*Connection) bool {
@@ -59,10 +62,11 @@ func failedAuthWebsite(con *Connection) {
 
 func request(checkAction CheckFunc, failAction HandlerFunc, action HandlerFunc) HandlerFunc {
 	return func(con *Connection) {
-		// create context
-		err := con.cfg.InitConnection(con)
-		if err != nil {
-			panic(err)
+		if checkAction == nil || failAction == nil || action == nil {
+			panic(fmt.Sprintf("can't execute request method, some given methods are nil (checkAction: %t, failAction: %t, action: %t)", checkAction == nil, failAction == nil, action == nil))
+		}
+		if con.cfg.Close == nil || con.cfg.Finish == nil {
+			panic(fmt.Sprintf("can't execute request method, some given methods are nil (close: %t, finish: %t)", con.cfg.Close == nil, con.cfg.Finish == nil))
 		}
 
 		log.Print("\n\nRequest: ", con.RequestSignature())
@@ -81,7 +85,7 @@ func request(checkAction CheckFunc, failAction HandlerFunc, action HandlerFunc) 
 		log.Printf("ResponseInfo: %s[%d](%s) %s", response.Type, response.Code, response.Duration, response.Description)
 
 		commitChanges := response.Code <= 204 || (response.Code < 400 && response.Type != FailRedirectType)
-		err = con.cfg.Close(con, commitChanges)
+		err := con.cfg.Close(con, commitChanges)
 		if err != nil {
 			log.Print("Context Close error")
 		}
@@ -89,4 +93,3 @@ func request(checkAction CheckFunc, failAction HandlerFunc, action HandlerFunc) 
 		con.cfg.Finish(con)
 	}
 }
-

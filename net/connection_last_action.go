@@ -37,17 +37,17 @@ func (con *Connection) SendResponse(returnDto interface{}, err error) {
 			netErr = NewInternalServerError(err).(netError)
 		}
 
-		if netErr.Code() == http.StatusBadRequest {
-			con.gin.JSON(netErr.Code(), gin.H{
+		if netErr.code == http.StatusBadRequest {
+			con.gin.JSON(netErr.code, gin.H{
 				"msg":           netErr.Error(),
-				"brokenElement": netErr.BrokenElement(),
-				"brokenIndex":   netErr.BrokenIndex(),
+				"brokenElement": netErr.brokenElement,
+				"brokenIndex":   netErr.brokenIndex,
 			})
 		} else {
-			http.Error(con.gin.Writer, "error occurred", netErr.Code())
+			http.Error(con.gin.Writer, "error occurred", netErr.code)
 		}
 
-		con.setResponseInfo(RestType, netErr.Error()+"\n"+netErr.Stacktrace())
+		con.setResponseInfo(RestType, netErr.Error()+"\n"+netErr.stackTrace)
 		return
 	}
 

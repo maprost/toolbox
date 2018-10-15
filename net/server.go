@@ -1,59 +1,104 @@
-package sys
+package net
 
 import (
+	"net/http"
+	"time"
+
 	"sync"
 
-	"bitbucket.org/MatthiasLeuth/chat_server/internal/sys/systruct"
-	"bitbucket.org/MatthiasLeuth/chat_server/internal/module/usermod"
-	"bitbucket.org/MatthiasLeuth/chat_server/internal/module/lockmod"
-	"bitbucket.org/MatthiasLeuth/chat_server/internal/module/usermod/user_badger"
-	"bitbucket.org/MatthiasLeuth/chat_server/internal/module/lockmod/lock_badger"
+	"github.com/gin-gonic/gin"
 )
 
-var server *serverSetup
-var serverCreateMutex = &sync.Mutex{}
+// Server wraps the gin.Engine
+type Server struct {
+	engine *gin.Engine
+	cfg    *Config
 
-type serverSetup struct {
-	Config          *systruct.Config
-	UserGateCreator usermod.GateCreator
-	LogGateCreator  lockmod.GateCreator
+	Extension interface{}
 }
 
-// NewServerSetup creates a 'serverSetup'
-func NewServerSetup(config *systruct.Config) *serverSetup {
+// NewServer creates a new router
+func NewServer(config *Config) *Server {
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	return &Server{
+		engine:    router,
+		cfg:       config,
+		Extension: nil,
+	}
+}
+
+var server *Server
+var serverCreateMutex = &sync.Mutex{}
+
+// NewSingleServer creates a singleton 'server'
+func NewSingletonServer(creatorFunc func() *Server) *Server {
 	serverCreateMutex.Lock()
 	defer serverCreateMutex.Unlock()
 
-	if server != nil && config.OneServerSetup {
+	if server != nil {
 		return server
 	}
 
-	server = &serverSetup{
-		Config:          config,
-		UserGateCreator: usermodCreator(config),
-		LogGateCreator:  lockmodCreator(config),
-	}
-
+	server = creatorFunc()
 	return server
 }
 
-func ServerSetup() *serverSetup {
-	return server
+type HandlerFunc func(*Connection)
+type CheckFunc func(*Connection) bool
+
+// Post request method
+func (s *Server) Post(relativePath string, handlers HandlerFunc) gin.IRoutes {
+	return s.engine.POST(relativePath, netRequest(handlers, s))
 }
 
-func usermodCreator(config *systruct.Config) usermod.GateCreator {
-	creator, err := user_badger.NewGateCreator(config.SessionTTL)
-	if err != nil {
-		panic(err)
-	}
-	return creator
+// Get request method
+func (s *Server) Get(relativePath string, handlers HandlerFunc) gin.IRoutes {
+	return s.engine.GET(relativePath, netRequest(handlers, s))
 }
 
-func lockmodCreator(config *systruct.Config) lockmod.GateCreator {
-	creator, err := lock_badger.NewGateCreator(config.LockExpireTime)
-	if err != nil {
-		panic(err)
-	}
+// Delete request method
+func (s *Server) Delete(relativePath string, handlers HandlerFunc) gin.IRoutes {
+	return s.engine.DELETE(relativePath, netRequest(handlers, s))
+}
 
-	return creator
+// Put request method
+func (s *Server) Put(relativePath string, handlers HandlerFunc) gin.IRoutes {
+	return s.engine.PUT(relativePath, netRequest(handlers, s))
+}
+
+// StaticFiles
+func (s *Server) StaticFiles(path string, fs http.FileSystem) gin.IRoutes {
+	return s.engine.StaticFS(path, fs)
+}
+
+// Run the server
+func (s *Server) Run() error {
+	return s.engine.Run(s.cfg.Host + ":" + s.cfg.Port)
+}
+
+// ServeHTTP is to conform to the http.Handler interface
+func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	s.engine.ServeHTTP(rw, req)
+}
+
+func netRequest(requestFunc HandlerFunc, s *Server) gin.HandlerFunc {
+	return func(gin *gin.Context) {
+		con := &Connection{
+			gin:   gin,
+			start: time.Now(),
+			cfg:   s.cfg,
+		}
+		con.loadDefaultCookies()
+
+		if s.cfg.InitConnection != nil {
+			err := s.cfg.InitConnection(s, con)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		requestFunc(con)
+	}
 }

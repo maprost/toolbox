@@ -21,26 +21,6 @@ func (e netError) Error() string {
 	return e.msg
 }
 
-// BrokenElement returns the key for a broken element (front-end can handle different elements better)
-func (e netError) BrokenElement() string {
-	return e.brokenElement
-}
-
-// BrokenIndex returns the index of the broken element (only available if a broken element was set)
-func (e netError) BrokenIndex() int {
-	return e.brokenIndex
-}
-
-// Code returns the http error code
-func (e netError) Code() int {
-	return e.code
-}
-
-// Stacktrace returns the Error stacktrace if available
-func (e netError) Stacktrace() string {
-	return e.stackTrace
-}
-
 // NewInternalServerError creates a new internal server error (500)
 func NewInternalServerError(e error) error {
 	// don't override old errors

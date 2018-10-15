@@ -11,10 +11,10 @@ import (
 	"github.com/maprost/toolbox/net"
 )
 
-func TestNet_SendResponse_200(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
+func Test_SendResponse_200(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
 		ts := TestStruct{Name: "Bob"}
-		n.SendResponse(ts, nil)
+		con.SendResponse(ts, nil)
 	})
 	defer server.Close()
 
@@ -26,9 +26,9 @@ func TestNet_SendResponse_200(t *testing.T) {
 	should.BeEqual(t, resultTs.Name, "Bob")
 }
 
-func TestNet_SendResponse_204(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
-		n.SendResponse(nil, nil)
+func Test_SendResponse_204(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
+		con.SendResponse(nil, nil)
 	})
 	defer server.Close()
 
@@ -36,10 +36,10 @@ func TestNet_SendResponse_204(t *testing.T) {
 	rctest.CheckResult(t, response, rctest.Status204())
 }
 
-func TestNet_SendResponse_400(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
+func Test_SendResponse_400(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
 		ts := TestStruct{Name: "Bob"}
-		n.SendResponse(ts, net.NewBadRequestError("all is wrong here", "Msg"))
+		con.SendResponse(ts, net.NewBadRequestError("all is wrong here", "Msg"))
 	})
 	defer server.Close()
 
@@ -51,10 +51,10 @@ func TestNet_SendResponse_400(t *testing.T) {
 	should.BeEqual(t, resultTs.Name, "")
 }
 
-func TestNet_SendResponse_404(t *testing.T) {
-	server := NewSimpleNetServer(func(n net.Connection) {
+func Test_SendResponse_404(t *testing.T) {
+	server := NewSimpleGetServer(func(con *net.Connection) {
 		ts := TestStruct{Name: "Bob"}
-		n.SendResponse(ts, net.NewNotFoundError("all is wrong here"))
+		con.SendResponse(ts, net.NewNotFoundError("all is wrong here"))
 	})
 	defer server.Close()
 
@@ -66,14 +66,14 @@ func TestNet_SendResponse_404(t *testing.T) {
 	should.BeEqual(t, resultTs.Name, "")
 }
 
-func TestNet_Redirect(t *testing.T) {
-	server := NewNetServer(
-		map[string]actionFunc{
-			"/redirect": func(n net.Connection) {
-				n.Redirect("/target")
+func Test_Redirect(t *testing.T) {
+	server := NewGetServer(
+		map[string]net.HandlerFunc{
+			"/redirect": func(con *net.Connection) {
+				con.Redirect("/target")
 			},
-			"/target": func(n net.Connection) {
-				n.SendResponse(nil, nil)
+			"/target": func(con *net.Connection) {
+				con.SendResponse(nil, nil)
 			},
 		})
 	defer server.Close()
@@ -82,14 +82,14 @@ func TestNet_Redirect(t *testing.T) {
 	rctest.CheckResult(t, response, rctest.Status204())
 }
 
-func TestNet_FailRedirect(t *testing.T) {
-	server := NewNetServer(
-		map[string]actionFunc{
-			"/redirect": func(n net.Connection) {
-				n.FailRedirect()
+func Test_FailRedirect(t *testing.T) {
+	server := NewGetServer(
+		map[string]net.HandlerFunc{
+			"/redirect": func(con *net.Connection) {
+				con.FailRedirect()
 			},
-			"/": func(n net.Connection) {
-				n.SendResponse(nil, nil)
+			"/": func(con *net.Connection) {
+				con.SendResponse(nil, nil)
 			},
 		})
 	defer server.Close()

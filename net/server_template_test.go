@@ -9,7 +9,7 @@ import (
 
 func TestCreateHTMLTemplates(t *testing.T) {
 	t.Skip("Need a web path")
-	router := net.NewRouter()
+	router := net.NewServer(net.NewConfig())
 
 	tmp := router.CreateTemplatesFromPath("")
 	should.NotBeNil(t, tmp)
