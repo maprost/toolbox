@@ -18,8 +18,9 @@ type Config struct {
 	InitContext      func(*Server) (error, interface{})
 	AuthCheck        CheckFunc
 	AdminCheck       CheckFunc
+	WebSocketError   func(con *Connection)
 	Close            func(con *Connection, commit bool) error
-	Finish           func(con *Connection)
+	Finish           HandlerFunc
 }
 
 func NewConfig() *Config {

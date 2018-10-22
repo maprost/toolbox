@@ -1,7 +1,6 @@
 package net
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -47,7 +46,7 @@ func NewSingletonServer(creatorFunc func() *Server) *Server {
 }
 
 type HandlerFunc func(*Connection)
-type WebSocketFunc func(*Connection, *WebSocketChannel)
+type WebSocketFunc func(*Connection)
 type CheckFunc func(*Connection) bool
 
 // Post request method
@@ -75,10 +74,10 @@ func (s *Server) StaticFiles(path string, fs http.FileSystem) gin.IRoutes {
 	return s.engine.StaticFS(path, fs)
 }
 
-// StaticFiles
-func (s *Server) Websocket(path string, handlers WebSocketFunc) gin.IRoutes {
-	return s.engine.GET(path, webSocketRequest(handlers, s))
-}
+//// StaticFiles
+//func (s *Server) Websocket(path string, handlers WebSocketFunc) gin.IRoutes {
+//	return s.engine.GET(path, webSocketRequest(handlers, s))
+//}
 
 // Run the server
 func (s *Server) Run() error {
@@ -97,34 +96,34 @@ func netRequest(requestFunc HandlerFunc, s *Server) gin.HandlerFunc {
 	}
 }
 
-func webSocketRequest(webSocketFunc WebSocketFunc, s *Server) gin.HandlerFunc {
-	return func(gin *gin.Context) {
-		con := initConnection(gin, s)
-
-		ws, err := con.WebSocketChannel()
-		if err != nil {
-			con.SendResponse(nil, err)
-			return
-		}
-
-		defer ws.Close()
-
-		for {
-			msg, open, err := ws.Read()
-			if err != nil {
-				con.SendResponse(nil, err)
-				return
-			}
-			if !open {
-				con.SendResponse(nil, nil)
-				return
-			}
-
-			// TODO:
-			webSocketFunc(con, ws)
-		}
-	}
-}
+//func webSocketRequest(webSocketFunc WebSocketFunc, s *Server) gin.HandlerFunc {
+//	return func(gin *gin.Context) {
+//		con := initConnection(gin, s)
+//
+//		ws, err := con.WebSocketChannel()
+//		if err != nil {
+//			con.SendResponse(nil, err)
+//			return
+//		}
+//
+//		defer ws.Close()
+//
+//		for {
+//			msg, open, err := ws.Read()
+//			if err != nil {
+//				con.SendResponse(nil, err)
+//				return
+//			}
+//			if !open {
+//				con.SendResponse(nil, nil)
+//				return
+//			}
+//
+//			// TODO:
+//			webSocketFunc(con, ws)
+//		}
+//	}
+//}
 
 func initConnection(gin *gin.Context, s *Server) *Connection {
 	con := &Connection{
