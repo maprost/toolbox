@@ -2,7 +2,9 @@ package net
 
 import (
 	"net/url"
+	"strings"
 
+	"github.com/gorilla/websocket"
 	"github.com/maprost/restclient"
 )
 
@@ -42,4 +44,13 @@ func (c Client) Delete(path string) *restclient.RestClient {
 	rc := restclient.Delete(path)
 	c.addCookies(rc)
 	return rc
+}
+
+func (c Client) WebSocketChannel(url string) (WebSocketChannel, error) {
+	if strings.HasPrefix(url, "http://") {
+		url = strings.TrimPrefix(url, "http://")
+	}
+	url = "ws://" + url
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	return WebSocketChannel{conn: conn}, err
 }

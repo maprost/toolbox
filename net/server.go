@@ -1,6 +1,7 @@
 package net
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -46,6 +47,7 @@ func NewSingletonServer(creatorFunc func() *Server) *Server {
 }
 
 type HandlerFunc func(*Connection)
+type WebSocketFunc func(*Connection, *WebSocketChannel)
 type CheckFunc func(*Connection) bool
 
 // Post request method
@@ -73,6 +75,11 @@ func (s *Server) StaticFiles(path string, fs http.FileSystem) gin.IRoutes {
 	return s.engine.StaticFS(path, fs)
 }
 
+// StaticFiles
+func (s *Server) Websocket(path string, handlers WebSocketFunc) gin.IRoutes {
+	return s.engine.GET(path, webSocketRequest(handlers, s))
+}
+
 // Run the server
 func (s *Server) Run() error {
 	return s.engine.Run(s.cfg.Host + ":" + s.cfg.Port)
@@ -85,20 +92,56 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func netRequest(requestFunc HandlerFunc, s *Server) gin.HandlerFunc {
 	return func(gin *gin.Context) {
-		con := &Connection{
-			gin:   gin,
-			start: time.Now(),
-			cfg:   s.cfg,
-		}
-		con.loadDefaultCookies()
-
-		if s.cfg.InitConnection != nil {
-			err := s.cfg.InitConnection(s, con)
-			if err != nil {
-				panic(err)
-			}
-		}
-
+		con := initConnection(gin, s)
 		requestFunc(con)
 	}
+}
+
+func webSocketRequest(webSocketFunc WebSocketFunc, s *Server) gin.HandlerFunc {
+	return func(gin *gin.Context) {
+		con := initConnection(gin, s)
+
+		ws, err := con.WebSocketChannel()
+		if err != nil {
+			con.SendResponse(nil, err)
+			return
+		}
+
+		defer ws.Close()
+
+		for {
+			msg, open, err := ws.Read()
+			if err != nil {
+				con.SendResponse(nil, err)
+				return
+			}
+			if !open {
+				con.SendResponse(nil, nil)
+				return
+			}
+
+			// TODO:
+			webSocketFunc(con, ws)
+		}
+	}
+}
+
+func initConnection(gin *gin.Context, s *Server) *Connection {
+	con := &Connection{
+		gin:   gin,
+		start: time.Now(),
+		cfg:   s.cfg,
+	}
+	con.loadDefaultCookies()
+
+	if s.cfg.InitContext != nil {
+		context, err := s.cfg.InitContext(s)
+		if err != nil {
+			panic(err)
+		}
+
+		con.Context = context
+	}
+
+	return con
 }

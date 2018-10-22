@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"time"
-
 )
 
-// PathParam returns the value of the given CookiePath key, "" if the key doesn't exists
+// PathParam returns the value of the given path key, "" if the key doesn't exists
 func (con *Connection) PathParam(key string) string {
 	return con.gin.Param(key)
 }
@@ -54,4 +53,34 @@ func (con *Connection) Body(obj interface{}) error {
 		return NewNotFoundError("can't convert body (%s)", string(bytes))
 	}
 	return nil
+}
+
+func (con *Connection) WebSocket(messageChannel chan []byte) error {
+	ws, err := con.WebSocketChannel()
+	if err != nil {
+		return err
+	}
+
+	// Make sure we close the connection when the function returns
+	defer ws.Close()
+
+	for {
+		// Read in a new message
+		msg, open, err := ws.Read()
+		if err != nil {
+			return err
+		}
+		if !open {
+			break
+		}
+		messageChannel <- msg
+	}
+
+	return nil
+}
+
+func (con *Connection) WebSocketChannel() (WebSocketChannel, error) {
+	// Upgrade initial GET request to a websocket
+	ws, err := con.wsUpgrader.Upgrade(con.gin.Writer, con.gin.Request, nil)
+	return WebSocketChannel{conn: ws}, err
 }

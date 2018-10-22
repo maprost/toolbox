@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,6 +56,7 @@ type Connection struct {
 	gin          *gin.Context
 	responseInfo ResponseInfo
 	start        time.Time
+	wsUpgrader   websocket.Upgrader
 
 	defaultCookieValues map[string]string // cookie -> value
 

@@ -15,7 +15,7 @@ type Config struct {
 
 	// handler func
 	FailRedirectPath string
-	InitConnection   func(*Server, *Connection) error
+	InitContext      func(*Server) (error, interface{})
 	AuthCheck        CheckFunc
 	AdminCheck       CheckFunc
 	Close            func(con *Connection, commit bool) error
@@ -31,7 +31,7 @@ func NewConfig() *Config {
 		StartDelimiter:   "§§", // works better with html
 		EndDelimiter:     "§§", // works better with html
 		FailRedirectPath: "/",
-		InitConnection:   nil,
+		InitContext:      nil,
 		AuthCheck:        nil,
 		AdminCheck:       nil,
 		Close:            nil,
