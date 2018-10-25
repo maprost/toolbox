@@ -2,11 +2,11 @@ package net
 
 import (
 	"fmt"
+	"log"
 	"time"
 
-	"github.com/gorilla/websocket"
-
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 type responseType int
@@ -52,15 +52,16 @@ func (r ResponseInfo) Successful() bool {
 
 // Connection wraps the gin.Context struct
 type Connection struct {
-	cfg          *Config
-	gin          *gin.Context
-	responseInfo ResponseInfo
-	start        time.Time
-	wsUpgrader   websocket.Upgrader
-
+	cfg                 *Config
+	server              *Server
+	gin                 *gin.Context
+	start               time.Time
 	defaultCookieValues map[string]string // cookie -> value
+	wsUpgrader          websocket.Upgrader
+	responseInfo        ResponseInfo
 
 	Context interface{}
+	Log     *log.Logger
 }
 
 // RequestSignature returns the request signature as string
