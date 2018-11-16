@@ -2,7 +2,6 @@ package net
 
 import (
 	"fmt"
-	"log"
 )
 
 // Request without auth check
@@ -25,12 +24,12 @@ func Website(action HandlerFunc) HandlerFunc {
 	return request(noCheck, func(*Connection) {}, action)
 }
 
-// Website with auth check and root redirect if auth failed
+// AuthWebsite with auth check and root redirect if auth failed
 func AuthWebsite(action HandlerFunc) HandlerFunc {
 	return request(authCheck, failedAuthWebsite, action)
 }
 
-// Website with admin check and root redirect if auth failed
+// AdminWebsite with admin check and root redirect if auth failed
 func AdminWebsite(action HandlerFunc) HandlerFunc {
 	return request(adminCheck, failedAuthWebsite, action)
 }
@@ -40,17 +39,17 @@ func File(action HandlerFunc) HandlerFunc {
 	return request(noCheck, func(*Connection) {}, action)
 }
 
-// Request without auth check
+// WebSocket without auth check
 func WebSocket(action WebSocketFunc) HandlerFunc {
 	return webSocket(noCheck, func(*Connection) {}, action)
 }
 
-// Request without auth check
+// AuthWebSocket with auth check and 401 if auth failed
 func AuthWebSocket(action WebSocketFunc) HandlerFunc {
 	return webSocket(authCheck, failedAuthRequest, action)
 }
 
-// Request without auth check
+// AdminWebSocket with admin check and 401 if auth failed
 func AdminWebSocket(action WebSocketFunc) HandlerFunc {
 	return webSocket(adminCheck, failedAuthRequest, action)
 }
@@ -81,30 +80,32 @@ func request(checkAction CheckFunc, failAuthAction HandlerFunc, action HandlerFu
 	}
 
 	return func(con *Connection) {
-		if con.cfg.Close == nil || con.cfg.Finish == nil {
-			panic(fmt.Sprintf("can't execute request method, some given methods are nil (close: %t, finish: %t)", con.cfg.Close == nil, con.cfg.Finish == nil))
+		if con.cfg.InitConnection == nil || con.cfg.Commit == nil || con.cfg.Finish == nil {
+			panic(fmt.Sprintf("can't execute request method, some given methods are nil (initConnection: %t, commit: %t, finish: %t)",
+				con.cfg.InitConnection == nil,
+				con.cfg.Commit == nil,
+				con.cfg.Finish == nil))
 		}
 
-		log.Print("\n\nRequest: ", con.RequestSignature())
-		log.Print(con.RequestHeader())
+		if ok := con.cfg.InitConnection(con.server, con); !ok {
+			return
+		}
+
+		con.Log.Print("Request: ", con.RequestSignature())
+		con.Log.Print("Request-Header: ", con.RequestHeader())
 
 		// security check
-		ok := checkAction(con)
-		if !ok {
-			log.Print("Check failed")
+		if ok := checkAction(con); !ok {
 			failAuthAction(con)
 		} else {
 			action(con)
 		}
 
 		response := con.ResponseInfo()
-		log.Printf("ResponseInfo: %s[%d](%s) %s", response.Type, response.Code, response.Duration, response.Description)
+		con.Log.Printf("Response: %s[%d](%s) %s", response.Type, response.Code, response.Duration, response.Description)
 
 		commitChanges := response.Code <= 204 || (response.Code < 400 && response.Type != FailRedirectType)
-		err := con.cfg.Close(con, commitChanges)
-		if err != nil {
-			log.Print("Context Close error")
-		}
+		con.cfg.Commit(con, commitChanges)
 
 		con.cfg.Finish(con)
 	}
@@ -116,62 +117,58 @@ func webSocket(checkAction CheckFunc, failAuthAction HandlerFunc, action WebSock
 	}
 
 	return func(con *Connection) {
-		if con.cfg.Close == nil || con.cfg.Finish == nil || con.cfg.WebSocketError == nil {
-			panic(fmt.Sprintf("can't execute request method, some given methods are nil (close: %t, finish: %t, webSocketError: %t)", con.cfg.Close == nil, con.cfg.Finish == nil, con.cfg.WebSocketError == nil))
+		if con.cfg.InitConnection == nil || con.cfg.WebSocketError == nil || con.cfg.RefreshWebSocketContext == nil || con.cfg.Commit == nil || con.cfg.Finish == nil {
+			panic(fmt.Sprintf("can't execute request method, some given methods are nil (initConnection: %t, webSocketError: %t, refreshWebsocket: %t, commit: %t, finish: %t)",
+				con.cfg.InitConnection == nil,
+				con.cfg.WebSocketError == nil,
+				con.cfg.RefreshWebSocketContext == nil,
+				con.cfg.Commit == nil,
+				con.cfg.Finish == nil))
 		}
 
-		ws, err := con.WebSocketChannel()
-		if err != nil {
-			con.cfg.WebSocketError(con)
+		if ok := con.cfg.InitConnection(con.server, con); !ok {
 			return
 		}
 
-		defer ws.Close()
+		con.Log.Print("Request: ", con.RequestSignature())
+		con.Log.Print("Request-Header: ", con.RequestHeader())
 
 		// security check
-		ok := checkAction(con)
-		if !ok {
-			log.Print("Check failed")
+		if ok := checkAction(con); !ok {
 			failAuthAction(con)
-		} else {
-			for {
 
+		} else {
+			ws, err := con.WebSocketChannel()
+			if err != nil {
+				con.cfg.WebSocketError(con, err)
+				return
+			}
+
+			defer ws.Close()
+
+			for {
 				msg, open, err := ws.Read()
 				if err != nil {
-					con.cfg.WebSocketError(con)
+					con.cfg.WebSocketError(con, err)
 					return
 				}
 				if !open {
-					con.cfg.Finish(con)
+					break
+				}
+
+				err = con.cfg.RefreshWebSocketContext(con.server, con)
+				if err != nil {
+					con.cfg.WebSocketError(con, err)
 					return
 				}
 
-				con.Context = con.cfg.InitContext()
-
-				action(con)
-
-				response := con.ResponseInfo()
-				log.Printf("ResponseInfo: %s[%d](%s) %s", response.Type, response.Code, response.Duration, response.Description)
-
-				commitChanges := response.Code <= 204 || (response.Code < 400 && response.Type != FailRedirectType)
-				err := con.cfg.Close(con, commitChanges)
-				if err != nil {
-					log.Print("Context Close error")
-				}
+				ok := action(msg, con.Context, ws)
+				con.cfg.Commit(con, ok)
 			}
 		}
 
-		log.Print("\n\nRequest: ", con.RequestSignature())
-		log.Print(con.RequestHeader())
-
-		// security check
-		ok := checkAction(con)
-		if !ok {
-			log.Print("Check failed")
-			failAuthAction(con)
-		} else {
-			action(con)
-		}
+		response := con.ResponseInfo()
+		con.Log.Printf("ResponseInfo: %s[%d](%s) %s", response.Type, response.Code, response.Duration, response.Description)
 
 		con.cfg.Finish(con)
 	}

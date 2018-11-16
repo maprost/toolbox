@@ -1,9 +1,14 @@
 package net
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 )
+
+type WebSocketWriteChannel interface {
+	WriteText(data string) error
+	WriteBinary(data []byte) error
+	WriteJson(js interface{}) error
+}
 
 // WebSocketChannel
 // example:
@@ -28,7 +33,6 @@ type WebSocketChannel struct {
 
 func (ws *WebSocketChannel) Read() ([]byte, bool, error) {
 	msgType, msg, err := ws.conn.ReadMessage()
-	fmt.Println("MsgType:", msgType, string(msg))
 	if _, ok := err.(*websocket.CloseError); ok {
 		return msg, false, nil
 	}

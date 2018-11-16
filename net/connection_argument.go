@@ -79,8 +79,8 @@ func (con *Connection) WebSocket(messageChannel chan []byte) error {
 	return nil
 }
 
-func (con *Connection) WebSocketChannel() (WebSocketChannel, error) {
+func (con *Connection) WebSocketChannel() (*WebSocketChannel, error) {
 	// Upgrade initial GET request to a websocket
 	ws, err := con.wsUpgrader.Upgrade(con.gin.Writer, con.gin.Request, nil)
-	return WebSocketChannel{conn: ws}, err
+	return &WebSocketChannel{conn: ws}, err
 }

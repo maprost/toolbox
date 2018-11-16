@@ -9,10 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/maprost/should"
 	"github.com/maprost/testbox/must"
-
-	"github.com/gorilla/websocket"
 	"github.com/maprost/toolbox/net"
 )
 
