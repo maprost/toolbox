@@ -1,10 +1,9 @@
 package pqx
 
 import (
+	"errors"
 	"reflect"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 type Entity interface {
