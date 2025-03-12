@@ -95,12 +95,16 @@ var (
 	}
 )
 
-func Text(txt string, color Color) string {
+func Text(color Color, txt string) string {
 	return fmt.Sprint(color, txt, ColorOff)
 }
 
 func Textf(color Color, txt string, args ...interface{}) string {
-	return Text(fmt.Sprintf(txt, args...), color)
+	return Text(color, fmt.Sprintf(txt, args...))
+}
+
+func Textln(color Color, txt string) string {
+	return fmt.Sprintln(color, txt, ColorOff)
 }
 
 func Remove(msg string) string {
